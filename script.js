@@ -1,27 +1,72 @@
-localforage.config({ name: 'SaaS_Financeiro', storeName: 'projetos' });
-
 let appData = { projects: [], activeProjectId: null };
 let chartInstance = null;
 let activeFilter = 'all';
 let currentEditingNoteIndex = null;
 
-const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatCurrency = (val) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Leitura Segura de Dados (IndexedDB com fallback para LocalStorage)
+async function getStorageData() {
+    try {
+        if (typeof localforage !== 'undefined') {
+            return await localforage.getItem('app_master_data');
+        } else {
+            const raw = localStorage.getItem('app_master_data');
+            return raw ? JSON.parse(raw) : null;
+        }
+    } catch (e) {
+        console.error("Erro na leitura de armazenamento:", e);
+        return null;
+    }
+}
+
+// Gravação Segura de Dados
+async function saveToDB() {
+    try {
+        if (typeof localforage !== 'undefined') {
+            await localforage.setItem('app_master_data', appData);
+        } else {
+            localStorage.setItem('app_master_data', JSON.stringify(appData));
+        }
+    } catch (e) {
+        console.error("Erro na gravação de armazenamento:", e);
+    }
+    updateDashboard();
+}
 
 async function initApp() {
-    const savedData = await localforage.getItem('app_master_data');
-    
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-theme');
-        document.getElementById('theme-toggle').textContent = '☀️';
-    }
+    try {
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+            const toggleBtn = document.getElementById('theme-toggle');
+            if (toggleBtn) toggleBtn.textContent = '☀️';
+        }
 
-    if (savedData && savedData.projects && savedData.projects.length > 0) {
-        appData = savedData;
-    } else {
+        const savedData = await getStorageData();
+
+        // Valida se os dados salvos são válidos e possuem projetos
+        if (savedData && Array.isArray(savedData.projects) && savedData.projects.length > 0) {
+            appData = savedData;
+            // Garante que o activeProjectId aponta para um projeto existente
+            const exists = appData.projects.some(p => p.id === appData.activeProjectId);
+            if (!exists) {
+                appData.activeProjectId = appData.projects[0].id;
+            }
+        } else {
+            appData = { projects: [], activeProjectId: null };
+            createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
+        }
+
+        renderTabs();
+        renderActiveProject();
+    } catch (err) {
+        console.error("Erro de Inicialização:", err);
+        // Em caso de falha grave, regenera o estado padrão limpo
+        appData = { projects: [], activeProjectId: null };
         createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
+        renderTabs();
+        renderActiveProject();
     }
-    renderTabs();
-    renderActiveProject();
 }
 
 function createProjectObject(name, value, months, startDateStr) {
@@ -52,14 +97,11 @@ function createProjectObject(name, value, months, startDateStr) {
     return projId;
 }
 
-async function saveToDB() {
-    await localforage.setItem('app_master_data', appData);
-    updateDashboard();
-}
-
 function renderTabs() {
     const tabsContainer = document.getElementById('project-tabs');
+    if (!tabsContainer) return;
     tabsContainer.innerHTML = '';
+    
     appData.projects.forEach(p => {
         const btn = document.createElement('button');
         btn.className = `tab ${p.id === appData.activeProjectId ? 'active' : ''}`;
@@ -73,8 +115,11 @@ function renderActiveProject() {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     if (!proj) return;
 
-    document.getElementById('project-title').textContent = proj.name;
+    const titleEl = document.getElementById('project-title');
+    if (titleEl) titleEl.textContent = proj.name;
+
     const container = document.getElementById('items-container');
+    if (!container) return;
     container.innerHTML = '';
 
     for (let i = 0; i < proj.months; i++) {
@@ -102,10 +147,8 @@ function renderActiveProject() {
                 <input type="date" class="input-date-compact" id="date-${i}" value="${item.dataPagamento}" onchange="updateItemDate(${i})">
                 
                 <div class="action-buttons-group">
-                    <!-- Atalho com Emoji para Anotações -->
                     <button class="btn-emoji-note ${hasNoteClass}" onclick="openNoteModal(${i})" title="Anotação">📝</button>
 
-                    <!-- Anexo de Comprovantes -->
                     ${!hasFile ? `
                         <label class="upload-label-compact">
                             📁 Anexar
@@ -129,10 +172,13 @@ function renderActiveProject() {
 
 function toggleItemPaid(index) {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    if (!proj) return;
     proj.rows[index].checked = document.getElementById(`check-${index}`).checked;
     
     const card = document.getElementById(`item-card-${index}`);
-    proj.rows[index].checked ? card.classList.add('paid') : card.classList.remove('paid');
+    if (card) {
+        proj.rows[index].checked ? card.classList.add('paid') : card.classList.remove('paid');
+    }
     
     saveToDB();
     applyFilter();
@@ -140,14 +186,15 @@ function toggleItemPaid(index) {
 
 function updateItemDate(index) {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    if (!proj) return;
     proj.rows[index].dataPagamento = document.getElementById(`date-${index}`).value;
     saveToDB();
 }
 
-/* Modal de Anotação */
 function openNoteModal(index) {
     currentEditingNoteIndex = index;
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    if (!proj) return;
     const item = proj.rows[index];
     
     document.getElementById('note-modal-title').textContent = `Nota — ${item.mes}`;
@@ -158,15 +205,16 @@ function openNoteModal(index) {
 function saveNoteFromModal() {
     if (currentEditingNoteIndex !== null) {
         const proj = appData.projects.find(p => p.id === appData.activeProjectId);
-        const text = document.getElementById('note-text-input').value;
-        proj.rows[currentEditingNoteIndex].nota = text;
-        saveToDB();
-        renderActiveProject();
+        if (proj) {
+            const text = document.getElementById('note-text-input').value;
+            proj.rows[currentEditingNoteIndex].nota = text;
+            saveToDB();
+            renderActiveProject();
+        }
     }
     closeModals();
 }
 
-/* Manipulação de Arquivos */
 function handleFile(event, index) {
     const file = event.target.files[0];
     if (!file) return;
@@ -174,6 +222,7 @@ function handleFile(event, index) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+        if (!proj) return;
         proj.rows[index].fileName = file.name;
         proj.rows[index].fileData = e.target.result;
         proj.rows[index].checked = true;
@@ -185,6 +234,7 @@ function handleFile(event, index) {
 
 function deleteFile(index) {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    if (!proj) return;
     proj.rows[index].fileName = '';
     proj.rows[index].fileData = null;
     saveToDB();
@@ -193,10 +243,11 @@ function deleteFile(index) {
 
 function viewFile(index) {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    if (!proj) return;
     const data = proj.rows[index].fileData;
     const viewer = document.getElementById('viewer-content');
     
-    if(!data) return;
+    if(!data || !viewer) return;
 
     if(data.startsWith('data:image')) {
         viewer.innerHTML = `<img src="${data}">`;
@@ -210,11 +261,11 @@ function viewFile(index) {
 
 function closeModals() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
-    document.getElementById('viewer-content').innerHTML = '';
+    const viewer = document.getElementById('viewer-content');
+    if (viewer) viewer.innerHTML = '';
     currentEditingNoteIndex = null;
 }
 
-/* Dashboard & Filtros */
 function updateDashboard() {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     if(!proj) return;
@@ -230,43 +281,57 @@ function updateDashboard() {
     }
 
     const percentage = Math.round((paidCount / proj.months) * 100) || 0;
-    document.getElementById('metric-months').textContent = `${paidCount} / ${proj.months}`;
-    document.getElementById('metric-percent').textContent = `${percentage}% concluído`;
-    document.getElementById('metric-paid').textContent = formatCurrency(paidValue);
-    document.getElementById('metric-total').textContent = `de ${formatCurrency(totalValue)}`;
-    document.getElementById('metric-remaining').textContent = formatCurrency(totalValue - paidValue);
-    document.getElementById('progress-bar').style.width = `${percentage}%`;
+    
+    const mMonths = document.getElementById('metric-months');
+    const mPercent = document.getElementById('metric-percent');
+    const mPaid = document.getElementById('metric-paid');
+    const mTotal = document.getElementById('metric-total');
+    const mRemaining = document.getElementById('metric-remaining');
+    const pBar = document.getElementById('progress-bar');
+
+    if(mMonths) mMonths.textContent = `${paidCount} / ${proj.months}`;
+    if(mPercent) mPercent.textContent = `${percentage}% concluído`;
+    if(mPaid) mPaid.textContent = formatCurrency(paidValue);
+    if(mTotal) mTotal.textContent = `de ${formatCurrency(totalValue)}`;
+    if(mRemaining) mRemaining.textContent = formatCurrency(totalValue - paidValue);
+    if(pBar) pBar.style.width = `${percentage}%`;
 
     updateChart(paidCount, proj.months - paidCount);
 }
 
 function updateChart(paid, pending) {
+    if (typeof Chart === 'undefined') return;
     const canvas = document.getElementById('progressChart');
-    if (!canvas || canvas.offsetWidth === 0) return; // Se estiver escondido no mobile pequeno
+    if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
-    const isDark = document.body.classList.contains('dark-theme');
-    
-    if (chartInstance) chartInstance.destroy();
-    
-    chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pago', 'Pendente'],
-            datasets: [{
-                data: [paid, pending],
-                backgroundColor: ['#10B981', isDark ? '#334155' : '#E2E8F0'],
-                borderWidth: 0
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' }
-    });
+    try {
+        const ctx = canvas.getContext('2d');
+        const isDark = document.body.classList.contains('dark-theme');
+        
+        if (chartInstance) chartInstance.destroy();
+        
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pago', 'Pendente'],
+                datasets: [{
+                    data: [paid, pending],
+                    backgroundColor: ['#10B981', isDark ? '#334155' : '#E2E8F0'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' }
+        });
+    } catch (e) {
+        console.warn("Renderização do gráfico ignorada:", e);
+    }
 }
 
 function filterTable(type) {
     activeFilter = type;
     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`filter-${type}`).classList.add('active');
+    const btnActive = document.getElementById(`filter-${type}`);
+    if (btnActive) btnActive.classList.add('active');
     applyFilter();
 }
 
@@ -284,7 +349,6 @@ function applyFilter() {
     }
 }
 
-/* Múltiplos Projetos & Backup */
 function openNewProjectModal() {
     document.getElementById('modal-new-project').classList.add('active');
 }
@@ -309,12 +373,26 @@ function toggleTheme() {
     document.body.classList.toggle('dark-theme');
     const isDark = document.body.classList.contains('dark-theme');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) toggleBtn.textContent = isDark ? '☀️' : '🌙';
     updateDashboard();
 }
 
+async function resetAllData() {
+    if (confirm("Deseja resetar todos os dados e restaurar o projeto inicial limpo?")) {
+        try {
+            if (typeof localforage !== 'undefined') await localforage.clear();
+            localStorage.removeItem('app_master_data');
+        } catch (e) {}
+        appData = { projects: [], activeProjectId: null };
+        createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
+        renderTabs();
+        renderActiveProject();
+    }
+}
+
 async function exportBackup() {
-    const data = await localforage.getItem('app_master_data');
+    const data = await getStorageData();
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
@@ -330,11 +408,11 @@ function importBackup(event) {
         try {
             const importedData = JSON.parse(e.target.result);
             if(importedData && importedData.projects) {
-                await localforage.setItem('app_master_data', importedData);
                 appData = importedData;
+                await saveToDB();
                 renderTabs();
                 renderActiveProject();
-                alert("Backup importado!");
+                alert("Backup importado com sucesso!");
             }
         } catch (err) { alert("Arquivo inválido."); }
     };
