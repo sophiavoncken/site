@@ -59,7 +59,7 @@ body {
     box-shadow: 0 10px 25px -5px rgba(0,0,0,0.06);
 }
 
-/* Navegação e Abas Responsivas */
+/* Topo e Navegação */
 .top-nav {
     display: flex;
     justify-content: space-between;
@@ -77,7 +77,6 @@ body {
     overflow-x: auto;
     max-width: 100%;
     padding-bottom: 4px;
-    scrollbar-width: thin;
 }
 
 .tab {
@@ -90,7 +89,6 @@ body {
     cursor: pointer;
     border: none;
     white-space: nowrap;
-    transition: all 0.2s ease;
 }
 
 .tab.active {
@@ -109,7 +107,6 @@ body {
     color: #ffffff !important;
 }
 
-/* Header & Titulo */
 .header-top {
     display: flex;
     justify-content: space-between;
@@ -120,9 +117,8 @@ body {
 }
 
 .header-top h1 {
-    font-size: 22px;
+    font-size: 20px;
     margin: 0;
-    word-break: break-word;
 }
 
 .backup-actions {
@@ -131,32 +127,18 @@ body {
     flex-wrap: wrap;
 }
 
-.btn-export {
-    background: var(--btn-bg);
-    color: var(--btn-text);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-theme {
+.btn-export, .btn-theme {
     background: var(--btn-bg);
     color: var(--btn-text);
     border: 1px solid var(--border-color);
     padding: 8px 12px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
 }
 
-/* Dashboard Responsivo: Grid + Chart */
+/* Dashboard */
 .dashboard-wrapper {
     display: flex;
     gap: 20px;
@@ -188,10 +170,9 @@ body {
 .metric-sub { font-size: 11px; color: var(--text-muted); }
 
 .chart-container {
-    width: 140px;
-    height: 140px;
+    width: 130px;
+    height: 130px;
     margin: 0 auto;
-    position: relative;
 }
 
 .progress-bar-container {
@@ -213,8 +194,6 @@ body {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
-    overflow-x: auto;
-    padding-bottom: 4px;
 }
 
 .filter-btn {
@@ -226,7 +205,6 @@ body {
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    white-space: nowrap;
 }
 
 .filter-btn.active {
@@ -234,12 +212,9 @@ body {
     color: #ffffff;
 }
 
-/* Tabela e Rolagem Mobile */
+/* Tabela Desktop */
 .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
+    width: 100%;
 }
 
 table {
@@ -247,6 +222,9 @@ table {
     border-collapse: collapse;
     font-size: 13px;
     background: var(--card-bg);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 th, td {
@@ -268,8 +246,7 @@ tr.paid-row td {
     background-color: var(--paid-bg);
 }
 
-/* Prevenção de Zoom no Safari/Mobile + Formats */
-input[type="text"], input[type="number"], input[type="date"], textarea, select {
+input[type="text"], input[type="number"], input[type="date"], textarea {
     font-size: 14px !important;
 }
 
@@ -281,15 +258,9 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select {
     padding: 6px 8px;
     border-radius: 6px;
     resize: vertical;
-    min-height: 44px;
+    min-height: 40px;
 }
 
-.note-input:focus {
-    border-color: var(--accent);
-    outline: none;
-}
-
-/* Anexos */
 .upload-btn {
     background: var(--btn-bg);
     color: var(--text-main);
@@ -314,7 +285,7 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select {
 
 .file-name {
     color: var(--accent);
-    max-width: 90px;
+    max-width: 120px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -333,7 +304,7 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select {
 .btn-view { color: var(--accent); }
 .btn-delete { color: var(--danger); }
 
-/* Modais Internos */
+/* Modais */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -349,10 +320,7 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select {
     padding: 16px;
 }
 
-.modal-overlay.active {
-    display: flex;
-}
-
+.modal-overlay.active { display: flex; }
 .modal-box {
     background: var(--card-bg);
     padding: 24px;
@@ -360,85 +328,85 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select {
     width: 420px;
     max-width: 100%;
     color: var(--text-main);
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
 }
-
-.modal-large {
-    width: 900px;
-    height: 85vh;
-    display: flex;
-    flex-direction: column;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.btn-close {
-    background: none;
-    border: none;
-    font-size: 20px;
-    color: var(--text-main);
-    cursor: pointer;
-}
-
-.input-group {
-    margin-bottom: 14px;
-}
-
-.input-group label {
-    display: block;
-    font-size: 12px;
-    margin-bottom: 6px;
-    color: var(--text-muted);
-    font-weight: 600;
-}
-
-.input-group input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-light);
-    color: var(--text-main);
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
+.modal-large { width: 900px; height: 85vh; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.btn-close { background: none; border: none; font-size: 20px; color: var(--text-main); cursor: pointer; }
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 12px; margin-bottom: 6px; color: var(--text-muted); font-weight: 600; }
+.input-group input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-light); color: var(--text-main); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 .btn-save { background: var(--accent); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; }
 .btn-cancel { background: var(--btn-bg); color: var(--btn-text); border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-
-.viewer-content {
-    flex: 1;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: #000000;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
+.viewer-content { flex: 1; border: 1px solid var(--border-color); border-radius: 8px; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .viewer-content img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.viewer-content iframe { width: 100%; height: 100%; border: none; background: #ffffff; }
+.viewer-content iframe { width: 100%; height: 100%; border: none; background: #fff; }
 
-/* Media Queries para Telas Pequenas */
-@media (max-width: 640px) {
-    body { padding: 8px; }
-    .container { padding: 16px; }
-    .header-top h1 { font-size: 18px; }
+/* ===================================================
+   TRANSFORMAÇÃO CARD MOBILE (DISPOSITIVOS <= 768px)
+   =================================================== */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    .container { padding: 14px; border-radius: 12px; }
+    
     .top-nav { flex-direction: column; align-items: stretch; }
     .nav-actions { justify-content: space-between; }
-    .backup-actions { width: 100%; justify-content: space-between; }
-    .btn-export { flex: 1; }
-    .dashboard-wrapper { flex-direction: column; text-align: center; }
-    .metrics-grid { grid-template-columns: 1fr; width: 100%; }
+    .header-top { flex-direction: column; align-items: stretch; }
+    .backup-actions { justify-content: space-between; width: 100%; }
+    .btn-export { flex: 1; text-align: center; }
+
+    /* Converte a tabela em blocos verticais */
+    table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+    }
+
+    /* Esconde o cabeçalho fixo */
+    thead {
+        display: none;
+    }
+
+    /* Cada linha vira um Card estilizado */
+    tr {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        margin-bottom: 14px;
+        padding: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+
+    tr.paid-row {
+        background-color: var(--paid-bg) !important;
+        border-color: var(--success);
+    }
+
+    /* Cada célula vira um campo estruturado */
+    td {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        border-bottom: 1px dashed var(--border-color);
+        padding: 8px 0;
+        gap: 4px;
+    }
+
+    td:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Injeta o rótulo do campo via data-label */
+    td::before {
+        content: attr(data-label);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .file-name {
+        max-width: 180px;
+    }
 }
