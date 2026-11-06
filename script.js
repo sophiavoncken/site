@@ -3,6 +3,7 @@ localforage.config({ name: 'SaaS_Financeiro', storeName: 'projetos' });
 let appData = { projects: [], activeProjectId: null };
 let chartInstance = null;
 let activeFilter = 'all';
+let currentEditingNoteIndex = null;
 
 const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -73,68 +74,99 @@ function renderActiveProject() {
     if (!proj) return;
 
     document.getElementById('project-title').textContent = proj.name;
-    const tbody = document.getElementById('table-body');
-    tbody.innerHTML = '';
+    const container = document.getElementById('items-container');
+    container.innerHTML = '';
 
     for (let i = 0; i < proj.months; i++) {
-        const rowData = proj.rows[i];
-        const tr = document.createElement('tr');
-        tr.id = `row-${i}`;
-        if(rowData.checked) tr.classList.add('paid-row');
+        const item = proj.rows[i];
+        const card = document.createElement('div');
+        card.className = `item-card ${item.checked ? 'paid' : ''}`;
+        card.id = `item-card-${i}`;
 
-        const hasFile = rowData.fileData ? 'display: flex;' : 'display: none;';
-        const noFile = rowData.fileData ? 'display: none;' : 'display: block;';
+        const hasFile = !!item.fileData;
+        const hasNoteClass = item.nota && item.nota.trim() !== '' ? 'has-note' : '';
 
-        tr.innerHTML = `
-            <td data-label="Mês"><strong>${rowData.mes}</strong></td>
-            <td data-label="Vencimento" style="text-transform: capitalize;">${rowData.vencimento}</td>
-            <td data-label="Valor">${formatCurrency(rowData.valor)}</td>
-            <td data-label="Status / Data">
-                <div style="width: 100%;">
-                    <label style="display:flex; gap:6px; font-weight:600; cursor:pointer; align-items:center;">
-                        <input type="checkbox" id="check-${i}" ${rowData.checked ? 'checked' : ''} onchange="updateRow(${i})"> Pago
-                    </label>
-                    <input type="date" id="date-${i}" value="${rowData.dataPagamento}" onchange="updateRow(${i})" style="margin-top:4px; width:100%; border:1px solid var(--border-color); border-radius:6px; padding:6px;">
-                </div>
-            </td>
-            <td data-label="Anotações">
-                <textarea class="note-input" id="note-${i}" placeholder="Adicionar nota..." onchange="updateRow(${i})">${rowData.nota}</textarea>
-            </td>
-            <td data-label="Comprovante">
-                <div style="display:flex; flex-direction:column; gap:4px; width: 100%;">
-                    <label class="upload-btn" id="label-btn-${i}" style="${noFile}">
-                        📁 Anexar Comprovante
-                        <input type="file" style="display: none;" onchange="handleFile(event, ${i})">
-                    </label>
-                    <div id="file-container-${i}" class="file-info-container" style="${hasFile}">
-                        <span class="file-name" title="${rowData.fileName}">📎 ${rowData.fileName}</span>
-                        <div style="display:flex; gap:4px;">
-                            <button class="btn-action btn-view" onclick="viewFile(${i})">👁️ Ver</button>
-                            <button class="btn-action btn-delete" onclick="deleteFile(${i})">🗑️ Excluir</button>
-                        </div>
+        card.innerHTML = `
+            <div class="item-main-row">
+                <div class="item-info">
+                    <input type="checkbox" class="checkbox-custom" id="check-${i}" ${item.checked ? 'checked' : ''} onchange="toggleItemPaid(${i})">
+                    <div>
+                        <span class="item-title">${item.mes}</span>
+                        <span class="item-date-text"> (${item.vencimento})</span>
                     </div>
                 </div>
-            </td>
+                <span class="item-value">${formatCurrency(item.valor)}</span>
+            </div>
+
+            <div class="item-actions-row">
+                <input type="date" class="input-date-compact" id="date-${i}" value="${item.dataPagamento}" onchange="updateItemDate(${i})">
+                
+                <div class="action-buttons-group">
+                    <!-- Atalho com Emoji para Anotações -->
+                    <button class="btn-emoji-note ${hasNoteClass}" onclick="openNoteModal(${i})" title="Anotação">📝</button>
+
+                    <!-- Anexo de Comprovantes -->
+                    ${!hasFile ? `
+                        <label class="upload-label-compact">
+                            📁 Anexar
+                            <input type="file" style="display:none;" onchange="handleFile(event, ${i})">
+                        </label>
+                    ` : `
+                        <div class="file-attached-group">
+                            <span class="file-tag-name" title="${item.fileName}">📎 ${item.fileName}</span>
+                            <button class="btn-mini" onclick="viewFile(${i})" title="Ver">👁️</button>
+                            <button class="btn-mini" onclick="deleteFile(${i})" title="Excluir">🗑️</button>
+                        </div>
+                    `}
+                </div>
+            </div>
         `;
-        tbody.appendChild(tr);
+        container.appendChild(card);
     }
     applyFilter();
     updateDashboard();
 }
 
-function updateRow(index) {
+function toggleItemPaid(index) {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     proj.rows[index].checked = document.getElementById(`check-${index}`).checked;
-    proj.rows[index].dataPagamento = document.getElementById(`date-${index}`).value;
-    proj.rows[index].nota = document.getElementById(`note-${index}`).value;
     
-    const rowEl = document.getElementById(`row-${index}`);
-    proj.rows[index].checked ? rowEl.classList.add('paid-row') : rowEl.classList.remove('paid-row');
+    const card = document.getElementById(`item-card-${index}`);
+    proj.rows[index].checked ? card.classList.add('paid') : card.classList.remove('paid');
     
     saveToDB();
     applyFilter();
 }
 
+function updateItemDate(index) {
+    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    proj.rows[index].dataPagamento = document.getElementById(`date-${index}`).value;
+    saveToDB();
+}
+
+/* Modal de Anotação */
+function openNoteModal(index) {
+    currentEditingNoteIndex = index;
+    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    const item = proj.rows[index];
+    
+    document.getElementById('note-modal-title').textContent = `Nota — ${item.mes}`;
+    document.getElementById('note-text-input').value = item.nota || '';
+    document.getElementById('modal-note').classList.add('active');
+}
+
+function saveNoteFromModal() {
+    if (currentEditingNoteIndex !== null) {
+        const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+        const text = document.getElementById('note-text-input').value;
+        proj.rows[currentEditingNoteIndex].nota = text;
+        saveToDB();
+        renderActiveProject();
+    }
+    closeModals();
+}
+
+/* Manipulação de Arquivos */
 function handleFile(event, index) {
     const file = event.target.files[0];
     if (!file) return;
@@ -171,7 +203,7 @@ function viewFile(index) {
     } else if(data.startsWith('data:application/pdf')) {
         viewer.innerHTML = `<iframe src="${data}"></iframe>`;
     } else {
-        viewer.innerHTML = `<p style="color:#ffffff; padding:20px;">Formato não suportado para pré-visualização.</p>`;
+        viewer.innerHTML = `<p style="color:#ffffff; padding:20px;">Formato não suportado para visualização.</p>`;
     }
     document.getElementById('modal-viewer').classList.add('active');
 }
@@ -179,8 +211,10 @@ function viewFile(index) {
 function closeModals() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     document.getElementById('viewer-content').innerHTML = '';
+    currentEditingNoteIndex = null;
 }
 
+/* Dashboard & Filtros */
 function updateDashboard() {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     if(!proj) return;
@@ -207,7 +241,10 @@ function updateDashboard() {
 }
 
 function updateChart(paid, pending) {
-    const ctx = document.getElementById('progressChart').getContext('2d');
+    const canvas = document.getElementById('progressChart');
+    if (!canvas || canvas.offsetWidth === 0) return; // Se estiver escondido no mobile pequeno
+    
+    const ctx = canvas.getContext('2d');
     const isDark = document.body.classList.contains('dark-theme');
     
     if (chartInstance) chartInstance.destroy();
@@ -237,16 +274,17 @@ function applyFilter() {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     if (!proj) return;
     for (let i = 0; i < proj.months; i++) {
-        const row = document.getElementById(`row-${i}`);
-        if(!row) continue;
+        const card = document.getElementById(`item-card-${i}`);
+        if(!card) continue;
         const isChecked = proj.rows[i].checked;
-        if (activeFilter === 'all') row.style.display = '';
-        else if (activeFilter === 'pending' && !isChecked) row.style.display = '';
-        else if (activeFilter === 'paid' && isChecked) row.style.display = '';
-        else row.style.display = 'none';
+        if (activeFilter === 'all') card.style.display = 'flex';
+        else if (activeFilter === 'pending' && !isChecked) card.style.display = 'flex';
+        else if (activeFilter === 'paid' && isChecked) card.style.display = 'flex';
+        else card.style.display = 'none';
     }
 }
 
+/* Múltiplos Projetos & Backup */
 function openNewProjectModal() {
     document.getElementById('modal-new-project').classList.add('active');
 }
@@ -296,7 +334,7 @@ function importBackup(event) {
                 appData = importedData;
                 renderTabs();
                 renderActiveProject();
-                alert("Backup importado com sucesso!");
+                alert("Backup importado!");
             }
         } catch (err) { alert("Arquivo inválido."); }
     };
