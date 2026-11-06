@@ -1,20 +1,14 @@
-// Configuração do IndexedDB via localForage
 localforage.config({ name: 'SaaS_Financeiro', storeName: 'projetos' });
 
 let appData = { projects: [], activeProjectId: null };
 let chartInstance = null;
 let activeFilter = 'all';
 
-// Formatação Monetária
 const formatCurrency = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// ==========================================
-// INICIALIZAÇÃO E CONTROLE DE DADOS
-// ==========================================
 async function initApp() {
     const savedData = await localforage.getItem('app_master_data');
     
-    // Configuração de Tema
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-theme');
         document.getElementById('theme-toggle').textContent = '☀️';
@@ -62,9 +56,6 @@ async function saveToDB() {
     updateDashboard();
 }
 
-// ==========================================
-// INTERFACE: ABAS E TABELA
-// ==========================================
 function renderTabs() {
     const tabsContainer = document.getElementById('project-tabs');
     tabsContainer.innerHTML = '';
@@ -95,29 +86,31 @@ function renderActiveProject() {
         const noFile = rowData.fileData ? 'display: none;' : 'display: block;';
 
         tr.innerHTML = `
-            <td><strong>${rowData.mes}</strong></td>
-            <td style="text-transform: capitalize;">${rowData.vencimento}</td>
-            <td>${formatCurrency(rowData.valor)}</td>
-            <td>
-                <label style="display:flex; gap:6px; font-weight:600; cursor:pointer; align-items:center;">
-                    <input type="checkbox" id="check-${i}" ${rowData.checked ? 'checked' : ''} onchange="updateRow(${i})"> Pago
-                </label>
-                <input type="date" id="date-${i}" value="${rowData.dataPagamento}" onchange="updateRow(${i})" style="margin-top:6px; width:100%; border:1px solid var(--border-color); border-radius:6px; padding:4px;">
+            <td data-label="Mês"><strong>${rowData.mes}</strong></td>
+            <td data-label="Vencimento" style="text-transform: capitalize;">${rowData.vencimento}</td>
+            <td data-label="Valor">${formatCurrency(rowData.valor)}</td>
+            <td data-label="Status / Data">
+                <div style="width: 100%;">
+                    <label style="display:flex; gap:6px; font-weight:600; cursor:pointer; align-items:center;">
+                        <input type="checkbox" id="check-${i}" ${rowData.checked ? 'checked' : ''} onchange="updateRow(${i})"> Pago
+                    </label>
+                    <input type="date" id="date-${i}" value="${rowData.dataPagamento}" onchange="updateRow(${i})" style="margin-top:4px; width:100%; border:1px solid var(--border-color); border-radius:6px; padding:6px;">
+                </div>
             </td>
-            <td>
-                <textarea class="note-input" id="note-${i}" placeholder="Anotação..." onchange="updateRow(${i})">${rowData.nota}</textarea>
+            <td data-label="Anotações">
+                <textarea class="note-input" id="note-${i}" placeholder="Adicionar nota..." onchange="updateRow(${i})">${rowData.nota}</textarea>
             </td>
-            <td>
-                <div style="display:flex; flex-direction:column; gap:4px;">
+            <td data-label="Comprovante">
+                <div style="display:flex; flex-direction:column; gap:4px; width: 100%;">
                     <label class="upload-btn" id="label-btn-${i}" style="${noFile}">
-                        📁 Anexar
+                        📁 Anexar Comprovante
                         <input type="file" style="display: none;" onchange="handleFile(event, ${i})">
                     </label>
                     <div id="file-container-${i}" class="file-info-container" style="${hasFile}">
                         <span class="file-name" title="${rowData.fileName}">📎 ${rowData.fileName}</span>
                         <div style="display:flex; gap:4px;">
-                            <button class="btn-action btn-view" onclick="viewFile(${i})">👁️</button>
-                            <button class="btn-action btn-delete" onclick="deleteFile(${i})">🗑️</button>
+                            <button class="btn-action btn-view" onclick="viewFile(${i})">👁️ Ver</button>
+                            <button class="btn-action btn-delete" onclick="deleteFile(${i})">🗑️ Excluir</button>
                         </div>
                     </div>
                 </div>
@@ -142,9 +135,6 @@ function updateRow(index) {
     applyFilter();
 }
 
-// ==========================================
-// ARQUIVOS: BASE64 E MODAL INTERNO
-// ==========================================
 function handleFile(event, index) {
     const file = event.target.files[0];
     if (!file) return;
@@ -181,7 +171,7 @@ function viewFile(index) {
     } else if(data.startsWith('data:application/pdf')) {
         viewer.innerHTML = `<iframe src="${data}"></iframe>`;
     } else {
-        viewer.innerHTML = `<p style="color:#ffffff; padding:20px;">Formato não suportado para pré-visualização direta.</p>`;
+        viewer.innerHTML = `<p style="color:#ffffff; padding:20px;">Formato não suportado para pré-visualização.</p>`;
     }
     document.getElementById('modal-viewer').classList.add('active');
 }
@@ -191,9 +181,6 @@ function closeModals() {
     document.getElementById('viewer-content').innerHTML = '';
 }
 
-// ==========================================
-// DASHBOARD, CHART.JS E FILTROS
-// ==========================================
 function updateDashboard() {
     const proj = appData.projects.find(p => p.id === appData.activeProjectId);
     if(!proj) return;
@@ -260,9 +247,6 @@ function applyFilter() {
     }
 }
 
-// ==========================================
-// MÚLTIPLOS PROJETOS E UTILIDADES
-// ==========================================
 function openNewProjectModal() {
     document.getElementById('modal-new-project').classList.add('active');
 }
@@ -291,9 +275,6 @@ function toggleTheme() {
     updateDashboard();
 }
 
-// ==========================================
-// BACKUP (JSON) & EXPORTAÇÃO (CSV)
-// ==========================================
 async function exportBackup() {
     const data = await localforage.getItem('app_master_data');
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
