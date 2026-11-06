@@ -3,81 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gerenciador Financeiro Pro</title>
+    <title>Gerenciador Financeiro</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Bibliotecas Externas -->
-    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="container">
-    <!-- Topbar & Abas -->
     <div class="top-nav">
         <div class="project-tabs" id="project-tabs"></div>
         <div class="nav-actions">
-            <button class="btn-action-main" onclick="openNewProjectModal()">➕ Novo</button>
-            <button id="theme-toggle" class="btn-icon" onclick="toggleTheme()" title="Modo Escuro">🌙</button>
+            <button class="btn-main" onclick="openNewProjectModal()">➕ Novo</button>
+            <button id="theme-toggle" class="btn-icon" onclick="toggleTheme()">🌙</button>
         </div>
     </div>
 
     <header>
         <div class="header-top">
-            <h1 id="project-title">Gerenciador Financeiro</h1>
+            <h1 id="project-title">Carregando...</h1>
             <div class="backup-actions">
                 <button class="btn-sm" onclick="exportCSV()">📊 CSV</button>
-                <button class="btn-sm" onclick="exportBackup()">💾 Backup</button>
+                <button class="btn-sm" onclick="exportJSON()">💾 Backup</button>
                 <label class="btn-sm">
                     📂 Importar
-                    <input type="file" style="display:none" onchange="importBackup(event)" accept=".json">
+                    <input type="file" style="display:none" onchange="importJSON(event)" accept=".json">
                 </label>
-                <button class="btn-sm btn-danger-sm" onclick="resetAllData()" title="Resetar Dados">🔄 Reset</button>
+                <button class="btn-sm btn-danger" onclick="resetSystem()">🔄 Reset</button>
             </div>
         </div>
-        
-        <!-- Dashboard Simplificado -->
-        <div class="dashboard-wrapper">
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-title">Progresso</span>
-                    <span id="metric-months" class="metric-value">0 / 0</span>
-                    <span id="metric-percent" class="metric-sub">0% concluído</span>
-                </div>
-                <div class="metric-card highlight-green">
-                    <span class="metric-title">Pago</span>
-                    <span id="metric-paid" class="metric-value">R$ 0,00</span>
-                    <span class="metric-sub" id="metric-total">de R$ 0,00</span>
-                </div>
-                <div class="metric-card highlight-orange">
-                    <span class="metric-title">Restante</span>
-                    <span id="metric-remaining" class="metric-value">R$ 0,00</span>
-                    <span class="metric-sub">a repassar</span>
-                </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-title">Progresso</span>
+                <span id="metric-months" class="metric-value">0 / 0</span>
+                <span id="metric-percent" class="metric-sub">0% concluído</span>
             </div>
-            <div class="chart-container">
-                <canvas id="progressChart"></canvas>
+            <div class="metric-card highlight-green">
+                <span class="metric-title">Pago</span>
+                <span id="metric-paid" class="metric-value">R$ 0,00</span>
+                <span id="metric-total" class="metric-sub">de R$ 0,00</span>
+            </div>
+            <div class="metric-card highlight-orange">
+                <span class="metric-title">Restante</span>
+                <span id="metric-remaining" class="metric-value">R$ 0,00</span>
+                <span class="metric-sub">a repassar</span>
             </div>
         </div>
 
         <div class="progress-bar-container">
-            <div id="progress-bar" class="progress-bar" style="width: 0%;"></div>
+            <div id="progress-bar" class="progress-bar"></div>
         </div>
 
-        <!-- Filtros Rápidos -->
         <div class="filters-container">
-            <button class="filter-btn active" id="filter-all" onclick="filterTable('all')">Todos</button>
-            <button class="filter-btn" id="filter-pending" onclick="filterTable('pending')">Pendentes</button>
-            <button class="filter-btn" id="filter-paid" onclick="filterTable('paid')">Pagos</button>
+            <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">Todos</button>
+            <button class="filter-btn" id="filter-pending" onclick="setFilter('pending')">Pendentes</button>
+            <button class="filter-btn" id="filter-paid" onclick="setFilter('paid')">Pagos</button>
         </div>
     </header>
 
-    <!-- Lista de Parcelas -->
-    <div class="items-wrapper" id="items-container">
-        <!-- Inserido dinamicamente via JS -->
-    </div>
+    <div id="items-container" class="items-wrapper"></div>
 </div>
 
-<!-- Modal Novo Projeto -->
 <div id="modal-new-project" class="modal-overlay">
     <div class="modal-box">
         <h2>Criar Novo Controle</h2>
@@ -86,7 +71,7 @@
             <input type="text" id="new-proj-name" placeholder="Ex: Aluguel, Carro...">
         </div>
         <div class="input-group">
-            <label>Valor da Parcela Fixa (R$)</label>
+            <label>Valor da Parcela (R$)</label>
             <input type="number" id="new-proj-value" placeholder="2000" step="0.01">
         </div>
         <div class="input-group">
@@ -104,22 +89,20 @@
     </div>
 </div>
 
-<!-- Modal de Anotação -->
 <div id="modal-note" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 id="note-modal-title">Anotação da Parcela</h3>
+            <h3 id="note-modal-title">Anotação</h3>
             <button class="btn-close" onclick="closeModals()">✖</button>
         </div>
-        <textarea id="note-text-input" class="modal-textarea" rows="4" placeholder="Escreva aqui detalhes sobre este pagamento..."></textarea>
+        <textarea id="note-text-input" class="modal-textarea" rows="4" placeholder="Escreva detalhes sobre o pagamento..."></textarea>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
-            <button class="btn-save" onclick="saveNoteFromModal()">Salvar Nota</button>
+            <button class="btn-save" onclick="saveNote()">Salvar Nota</button>
         </div>
     </div>
 </div>
 
-<!-- Modal Visualizador de Arquivo -->
 <div id="modal-viewer" class="modal-overlay">
     <div class="modal-box modal-large">
         <div class="modal-header">
