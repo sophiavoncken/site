@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gerenciador Financeiro Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- Topbar & Abas de Projetos -->
+    <div class="top-nav">
+        <div class="project-tabs" id="project-tabs">
+            <!-- Abas inseridas via JS -->
+        </div>
+        <div class="nav-actions">
+            <button class="btn-theme btn-primary-action" onclick="openNewProjectModal()">➕ Novo Projeto</button>
+            <button id="theme-toggle" class="btn-theme" onclick="toggleTheme()" title="Alternar Modo Escuro">🌙</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-top">
+            <h1 id="project-title">Carregando...</h1>
+            <div class="backup-actions">
+                <button class="btn-export" onclick="exportCSV()">📊 CSV</button>
+                <button class="btn-export" onclick="exportBackup()">💾 Backup</button>
+                <label class="btn-export">
+                    📂 Importar
+                    <input type="file" style="display:none" onchange="importBackup(event)" accept=".json">
+                </label>
+            </div>
+        </div>
+        
+        <!-- Dashboard PRO Responsivo -->
+        <div class="dashboard-wrapper">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-title">Progresso</span>
+                    <span id="metric-months" class="metric-value">0 / 0</span>
+                    <span id="metric-percent" class="metric-sub">0% concluído</span>
+                </div>
+                <div class="metric-card highlight-green">
+                    <span class="metric-title">Total Quitado</span>
+                    <span id="metric-paid" class="metric-value">R$ 0,00</span>
+                    <span class="metric-sub" id="metric-total">de R$ 0,00</span>
+                </div>
+                <div class="metric-card highlight-orange">
+                    <span class="metric-title">Saldo Restante</span>
+                    <span id="metric-remaining" class="metric-value">R$ 0,00</span>
+                    <span class="metric-sub">a repassar</span>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+        </div>
+
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <div class="filters-container">
+            <button class="filter-btn active" id="filter-all" onclick="filterTable('all')">Todos</button>
+            <button class="filter-btn" id="filter-pending" onclick="filterTable('pending')">Pendentes</button>
+            <button class="filter-btn" id="filter-paid" onclick="filterTable('paid')">Pagos</button>
+        </div>
+    </header>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="min-width: 65px;">Mês</th>
+                    <th style="min-width: 120px;">Vencimento</th>
+                    <th style="min-width: 100px;">Valor</th>
+                    <th style="min-width: 140px;">Status / Data</th>
+                    <th style="min-width: 180px;">Anotações</th>
+                    <th style="min-width: 160px;">Comprovante</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Inserido dinamicamente via JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Novo Projeto -->
+<div id="modal-new-project" class="modal-overlay">
+    <div class="modal-box">
+        <h2>Criar Novo Controle</h2>
+        <div class="input-group">
+            <label>Nome do Projeto</label>
+            <input type="text" id="new-proj-name" placeholder="Ex: Aluguel, Carro...">
+        </div>
+        <div class="input-group">
+            <label>Valor da Parcela Fixa (R$)</label>
+            <input type="number" id="new-proj-value" placeholder="2000" step="0.01">
+        </div>
+        <div class="input-group">
+            <label>Quantidade de Parcelas</label>
+            <input type="number" id="new-proj-months" placeholder="24">
+        </div>
+        <div class="input-group">
+            <label>Data da 1ª Parcela</label>
+            <input type="date" id="new-proj-date">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
+            <button class="btn-save" onclick="createNewProject()">Salvar Projeto</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Visualizador de Arquivo -->
+<div id="modal-viewer" class="modal-overlay">
+    <div class="modal-box modal-large">
+        <div class="modal-header">
+            <h2>Comprovante Anetado</h2>
+            <button class="btn-close" onclick="closeModals()">✖</button>
+        </div>
+        <div id="viewer-content" class="viewer-content"></div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
