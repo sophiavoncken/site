@@ -23,7 +23,7 @@
 
     <header>
         <div class="header-top">
-            <h1 id="project-title">Carregando...</h1>
+            <h1 id="project-title">Gerenciador Financeiro</h1>
             <div class="backup-actions">
                 <button class="btn-sm" onclick="exportCSV()">📊 CSV</button>
                 <button class="btn-sm" onclick="exportBackup()">💾 Backup</button>
@@ -31,6 +31,7 @@
                     📂 Importar
                     <input type="file" style="display:none" onchange="importBackup(event)" accept=".json">
                 </label>
+                <button class="btn-sm btn-danger-sm" onclick="resetAllData()" title="Resetar Dados">🔄 Reset</button>
             </div>
         </div>
         
@@ -103,7 +104,7 @@
     </div>
 </div>
 
-<!-- Modal de Anotação (Substitui o bloco gigante) -->
+<!-- Modal de Anotação -->
 <div id="modal-note" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
