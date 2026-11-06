@@ -1,118 +1,82 @@
-let appData = { projects: [], activeProjectId: null };
-let chartInstance = null;
+const DB_KEY = 'saas_financeiro_clean_db';
+let db = { activeId: null, projects: [] };
 let activeFilter = 'all';
-let currentEditingNoteIndex = null;
+let editingNoteIdx = null;
 
-const formatCurrency = (val) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtCurrency = (val) => (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// Leitura Segura de Dados (IndexedDB com fallback para LocalStorage)
-async function getStorageData() {
+function loadData() {
     try {
-        if (typeof localforage !== 'undefined') {
-            return await localforage.getItem('app_master_data');
-        } else {
-            const raw = localStorage.getItem('app_master_data');
-            return raw ? JSON.parse(raw) : null;
+        const raw = localStorage.getItem(DB_KEY);
+        if (raw) {
+            db = JSON.parse(raw);
         }
     } catch (e) {
-        console.error("Erro na leitura de armazenamento:", e);
-        return null;
+        console.error("Erro no carregamento:", e);
+    }
+
+    if (!db || !Array.isArray(db.projects) || db.projects.length === 0) {
+        db = { activeId: null, projects: [] };
+        createProject("Repasses de Aluguel", 2000, 24, "2026-12-01");
+    } else if (!db.projects.some(p => p.id === db.activeId)) {
+        db.activeId = db.projects[0].id;
     }
 }
 
-// Gravação Segura de Dados
-async function saveToDB() {
+function saveData() {
     try {
-        if (typeof localforage !== 'undefined') {
-            await localforage.setItem('app_master_data', appData);
-        } else {
-            localStorage.setItem('app_master_data', JSON.stringify(appData));
-        }
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
     } catch (e) {
-        console.error("Erro na gravação de armazenamento:", e);
+        alert("Erro ao salvar! O arquivo pode ser muito grande para o navegador.");
     }
-    updateDashboard();
+    updateMetrics();
 }
 
-async function initApp() {
-    try {
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-theme');
-            const toggleBtn = document.getElementById('theme-toggle');
-            if (toggleBtn) toggleBtn.textContent = '☀️';
-        }
-
-        const savedData = await getStorageData();
-
-        // Valida se os dados salvos são válidos e possuem projetos
-        if (savedData && Array.isArray(savedData.projects) && savedData.projects.length > 0) {
-            appData = savedData;
-            // Garante que o activeProjectId aponta para um projeto existente
-            const exists = appData.projects.some(p => p.id === appData.activeProjectId);
-            if (!exists) {
-                appData.activeProjectId = appData.projects[0].id;
-            }
-        } else {
-            appData = { projects: [], activeProjectId: null };
-            createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
-        }
-
-        renderTabs();
-        renderActiveProject();
-    } catch (err) {
-        console.error("Erro de Inicialização:", err);
-        // Em caso de falha grave, regenera o estado padrão limpo
-        appData = { projects: [], activeProjectId: null };
-        createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
-        renderTabs();
-        renderActiveProject();
-    }
-}
-
-function createProjectObject(name, value, months, startDateStr) {
-    const projId = Date.now();
-    const rows = {};
-    const startDate = new Date(startDateStr + 'T12:00:00');
+function createProject(name, val, months, startDateStr) {
+    const id = Date.now();
+    const rows = [];
+    const startDate = new Date((startDateStr || '2026-12-01') + 'T12:00:00');
 
     for (let i = 0; i < months; i++) {
-        let curDate = new Date(startDate);
-        curDate.setMonth(curDate.getMonth() + i);
-        
-        rows[i] = {
-            mes: `Mês ${i+1}`,
-            vencimento: curDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-            valor: parseFloat(value),
+        const d = new Date(startDate);
+        d.setMonth(d.getMonth() + i);
+        rows.push({
+            mes: `Mês ${i + 1}`,
+            venc: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+            valor: parseFloat(val) || 2000,
             checked: false,
-            dataPagamento: '',
+            dataPag: '',
             nota: '',
             fileName: '',
             fileData: null
-        };
+        });
     }
 
-    const newProj = { id: projId, name, months, value, rows };
-    appData.projects.push(newProj);
-    appData.activeProjectId = projId;
-    saveToDB();
-    return projId;
+    db.projects.push({ id, name, months: parseInt(months), value: parseFloat(val), rows });
+    db.activeId = id;
+    saveData();
+    renderAll();
+}
+
+function getActiveProj() {
+    return db.projects.find(p => p.id === db.activeId);
 }
 
 function renderTabs() {
-    const tabsContainer = document.getElementById('project-tabs');
-    if (!tabsContainer) return;
-    tabsContainer.innerHTML = '';
-    
-    appData.projects.forEach(p => {
+    const tabsEl = document.getElementById('project-tabs');
+    if (!tabsEl) return;
+    tabsEl.innerHTML = '';
+    db.projects.forEach(p => {
         const btn = document.createElement('button');
-        btn.className = `tab ${p.id === appData.activeProjectId ? 'active' : ''}`;
+        btn.className = `tab ${p.id === db.activeId ? 'active' : ''}`;
         btn.textContent = p.name;
-        btn.onclick = () => { appData.activeProjectId = p.id; renderTabs(); renderActiveProject(); };
-        tabsContainer.appendChild(btn);
+        btn.onclick = () => { db.activeId = p.id; saveData(); renderAll(); };
+        tabsEl.appendChild(btn);
     });
 }
 
-function renderActiveProject() {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+function renderItems() {
+    const proj = getActiveProj();
     if (!proj) return;
 
     const titleEl = document.getElementById('project-title');
@@ -122,139 +86,136 @@ function renderActiveProject() {
     if (!container) return;
     container.innerHTML = '';
 
-    for (let i = 0; i < proj.months; i++) {
-        const item = proj.rows[i];
+    proj.rows.forEach((item, i) => {
         const card = document.createElement('div');
         card.className = `item-card ${item.checked ? 'paid' : ''}`;
-        card.id = `item-card-${i}`;
+        card.id = `item-${i}`;
 
         const hasFile = !!item.fileData;
-        const hasNoteClass = item.nota && item.nota.trim() !== '' ? 'has-note' : '';
+        const hasNote = item.nota && item.nota.trim() !== '';
 
         card.innerHTML = `
             <div class="item-main-row">
                 <div class="item-info">
-                    <input type="checkbox" class="checkbox-custom" id="check-${i}" ${item.checked ? 'checked' : ''} onchange="toggleItemPaid(${i})">
+                    <input type="checkbox" class="checkbox-custom" ${item.checked ? 'checked' : ''} onchange="togglePaid(${i}, this.checked)">
                     <div>
                         <span class="item-title">${item.mes}</span>
-                        <span class="item-date-text"> (${item.vencimento})</span>
+                        <span class="item-date-text"> (${item.venc})</span>
                     </div>
                 </div>
-                <span class="item-value">${formatCurrency(item.valor)}</span>
+                <span class="item-value">${fmtCurrency(item.valor)}</span>
             </div>
 
             <div class="item-actions-row">
-                <input type="date" class="input-date-compact" id="date-${i}" value="${item.dataPagamento}" onchange="updateItemDate(${i})">
+                <input type="date" class="input-date" value="${item.dataPag || ''}" onchange="updateDate(${i}, this.value)">
                 
-                <div class="action-buttons-group">
-                    <button class="btn-emoji-note ${hasNoteClass}" onclick="openNoteModal(${i})" title="Anotação">📝</button>
+                <div class="action-group">
+                    <button class="btn-emoji ${hasNote ? 'has-note' : ''}" onclick="openNote(${i})" title="Anotação">📝</button>
 
                     ${!hasFile ? `
-                        <label class="upload-label-compact">
+                        <label class="upload-label">
                             📁 Anexar
-                            <input type="file" style="display:none;" onchange="handleFile(event, ${i})">
+                            <input type="file" style="display:none;" onchange="uploadFile(event, ${i})">
                         </label>
                     ` : `
-                        <div class="file-attached-group">
-                            <span class="file-tag-name" title="${item.fileName}">📎 ${item.fileName}</span>
-                            <button class="btn-mini" onclick="viewFile(${i})" title="Ver">👁️</button>
-                            <button class="btn-mini" onclick="deleteFile(${i})" title="Excluir">🗑️</button>
+                        <div class="file-group">
+                            <span class="file-name" title="${item.fileName}">📎 ${item.fileName}</span>
+                            <button class="btn-mini" onclick="viewFile(${i})">👁️</button>
+                            <button class="btn-mini" onclick="deleteFile(${i})">🗑️</button>
                         </div>
                     `}
                 </div>
             </div>
         `;
         container.appendChild(card);
-    }
+    });
+
     applyFilter();
-    updateDashboard();
+    updateMetrics();
 }
 
-function toggleItemPaid(index) {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+function togglePaid(i, isChecked) {
+    const proj = getActiveProj();
     if (!proj) return;
-    proj.rows[index].checked = document.getElementById(`check-${index}`).checked;
-    
-    const card = document.getElementById(`item-card-${index}`);
+    proj.rows[i].checked = isChecked;
+    const card = document.getElementById(`item-${i}`);
     if (card) {
-        proj.rows[index].checked ? card.classList.add('paid') : card.classList.remove('paid');
+        isChecked ? card.classList.add('paid') : card.classList.remove('paid');
     }
-    
-    saveToDB();
+    saveData();
     applyFilter();
 }
 
-function updateItemDate(index) {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
-    if (!proj) return;
-    proj.rows[index].dataPagamento = document.getElementById(`date-${index}`).value;
-    saveToDB();
+function updateDate(i, val) {
+    const proj = getActiveProj();
+    if (proj) {
+        proj.rows[i].dataPag = val;
+        saveData();
+    }
 }
 
-function openNoteModal(index) {
-    currentEditingNoteIndex = index;
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+function openNote(i) {
+    editingNoteIdx = i;
+    const proj = getActiveProj();
     if (!proj) return;
-    const item = proj.rows[index];
-    
-    document.getElementById('note-modal-title').textContent = `Nota — ${item.mes}`;
-    document.getElementById('note-text-input').value = item.nota || '';
+    document.getElementById('note-modal-title').textContent = `Nota — ${proj.rows[i].mes}`;
+    document.getElementById('note-text-input').value = proj.rows[i].nota || '';
     document.getElementById('modal-note').classList.add('active');
 }
 
-function saveNoteFromModal() {
-    if (currentEditingNoteIndex !== null) {
-        const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+function saveNote() {
+    if (editingNoteIdx !== null) {
+        const proj = getActiveProj();
         if (proj) {
-            const text = document.getElementById('note-text-input').value;
-            proj.rows[currentEditingNoteIndex].nota = text;
-            saveToDB();
-            renderActiveProject();
+            proj.rows[editingNoteIdx].nota = document.getElementById('note-text-input').value;
+            saveData();
+            renderItems();
         }
     }
     closeModals();
 }
 
-function handleFile(event, index) {
-    const file = event.target.files[0];
+function uploadFile(ev, i) {
+    const file = ev.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(e) {
-        const proj = appData.projects.find(p => p.id === appData.activeProjectId);
-        if (!proj) return;
-        proj.rows[index].fileName = file.name;
-        proj.rows[index].fileData = e.target.result;
-        proj.rows[index].checked = true;
-        saveToDB();
-        renderActiveProject();
+        const proj = getActiveProj();
+        if (proj) {
+            proj.rows[i].fileName = file.name;
+            proj.rows[i].fileData = e.target.result;
+            proj.rows[i].checked = true;
+            saveData();
+            renderItems();
+        }
     };
     reader.readAsDataURL(file);
 }
 
-function deleteFile(index) {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
-    if (!proj) return;
-    proj.rows[index].fileName = '';
-    proj.rows[index].fileData = null;
-    saveToDB();
-    renderActiveProject();
+function deleteFile(i) {
+    const proj = getActiveProj();
+    if (proj) {
+        proj.rows[i].fileName = '';
+        proj.rows[i].fileData = null;
+        saveData();
+        renderItems();
+    }
 }
 
-function viewFile(index) {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+function viewFile(i) {
+    const proj = getActiveProj();
     if (!proj) return;
-    const data = proj.rows[index].fileData;
+    const data = proj.rows[i].fileData;
     const viewer = document.getElementById('viewer-content');
-    
-    if(!data || !viewer) return;
+    if (!data || !viewer) return;
 
-    if(data.startsWith('data:image')) {
+    if (data.startsWith('data:image')) {
         viewer.innerHTML = `<img src="${data}">`;
-    } else if(data.startsWith('data:application/pdf')) {
+    } else if (data.startsWith('data:application/pdf')) {
         viewer.innerHTML = `<iframe src="${data}"></iframe>`;
     } else {
-        viewer.innerHTML = `<p style="color:#ffffff; padding:20px;">Formato não suportado para visualização.</p>`;
+        viewer.innerHTML = `<p style="color:#fff; padding:15px;">Pré-visualização indisponível.</p>`;
     }
     document.getElementById('modal-viewer').classList.add('active');
 }
@@ -263,90 +224,51 @@ function closeModals() {
     document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     const viewer = document.getElementById('viewer-content');
     if (viewer) viewer.innerHTML = '';
-    currentEditingNoteIndex = null;
+    editingNoteIdx = null;
 }
 
-function updateDashboard() {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
-    if(!proj) return;
-    
-    let paidCount = 0, paidValue = 0, totalValue = 0;
+function updateMetrics() {
+    const proj = getActiveProj();
+    if (!proj) return;
 
-    for (let i = 0; i < proj.months; i++) {
-        totalValue += proj.rows[i].valor;
-        if(proj.rows[i].checked) {
+    let paidCount = 0, paidVal = 0, totalVal = 0;
+    proj.rows.forEach(r => {
+        totalVal += r.valor;
+        if (r.checked) {
             paidCount++;
-            paidValue += proj.rows[i].valor;
+            paidVal += r.valor;
         }
-    }
+    });
 
-    const percentage = Math.round((paidCount / proj.months) * 100) || 0;
-    
-    const mMonths = document.getElementById('metric-months');
-    const mPercent = document.getElementById('metric-percent');
-    const mPaid = document.getElementById('metric-paid');
-    const mTotal = document.getElementById('metric-total');
-    const mRemaining = document.getElementById('metric-remaining');
-    const pBar = document.getElementById('progress-bar');
-
-    if(mMonths) mMonths.textContent = `${paidCount} / ${proj.months}`;
-    if(mPercent) mPercent.textContent = `${percentage}% concluído`;
-    if(mPaid) mPaid.textContent = formatCurrency(paidValue);
-    if(mTotal) mTotal.textContent = `de ${formatCurrency(totalValue)}`;
-    if(mRemaining) mRemaining.textContent = formatCurrency(totalValue - paidValue);
-    if(pBar) pBar.style.width = `${percentage}%`;
-
-    updateChart(paidCount, proj.months - paidCount);
+    const pct = Math.round((paidCount / proj.months) * 100) || 0;
+    document.getElementById('metric-months').textContent = `${paidCount} / ${proj.months}`;
+    document.getElementById('metric-percent').textContent = `${pct}% concluído`;
+    document.getElementById('metric-paid').textContent = fmtCurrency(paidVal);
+    document.getElementById('metric-total').textContent = `de ${fmtCurrency(totalVal)}`;
+    document.getElementById('metric-remaining').textContent = fmtCurrency(totalVal - paidVal);
+    document.getElementById('progress-bar').style.width = `${pct}%`;
 }
 
-function updateChart(paid, pending) {
-    if (typeof Chart === 'undefined') return;
-    const canvas = document.getElementById('progressChart');
-    if (!canvas) return;
-    
-    try {
-        const ctx = canvas.getContext('2d');
-        const isDark = document.body.classList.contains('dark-theme');
-        
-        if (chartInstance) chartInstance.destroy();
-        
-        chartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Pago', 'Pendente'],
-                datasets: [{
-                    data: [paid, pending],
-                    backgroundColor: ['#10B981', isDark ? '#334155' : '#E2E8F0'],
-                    borderWidth: 0
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' }
-        });
-    } catch (e) {
-        console.warn("Renderização do gráfico ignorada:", e);
-    }
-}
-
-function filterTable(type) {
+function setFilter(type) {
     activeFilter = type;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    const btnActive = document.getElementById(`filter-${type}`);
-    if (btnActive) btnActive.classList.add('active');
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById(`filter-${type}`);
+    if (activeBtn) activeBtn.classList.add('active');
     applyFilter();
 }
 
 function applyFilter() {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    const proj = getActiveProj();
     if (!proj) return;
-    for (let i = 0; i < proj.months; i++) {
-        const card = document.getElementById(`item-card-${i}`);
-        if(!card) continue;
-        const isChecked = proj.rows[i].checked;
+
+    proj.rows.forEach((r, i) => {
+        const card = document.getElementById(`item-${i}`);
+        if (!card) return;
         if (activeFilter === 'all') card.style.display = 'flex';
-        else if (activeFilter === 'pending' && !isChecked) card.style.display = 'flex';
-        else if (activeFilter === 'paid' && isChecked) card.style.display = 'flex';
+        else if (activeFilter === 'pending' && !r.checked) card.style.display = 'flex';
+        else if (activeFilter === 'paid' && r.checked) card.style.display = 'flex';
         else card.style.display = 'none';
-    }
+    });
 }
 
 function openNewProjectModal() {
@@ -359,11 +281,9 @@ function createNewProject() {
     const m = document.getElementById('new-proj-months').value;
     const d = document.getElementById('new-proj-date').value;
 
-    if(name && val && m && d) {
-        createProjectObject(name, val, m, d);
+    if (name && val && m && d) {
+        createProject(name, val, m, d);
         closeModals();
-        renderTabs();
-        renderActiveProject();
     } else {
         alert("Preencha todos os campos.");
     }
@@ -372,67 +292,69 @@ function createNewProject() {
 function toggleTheme() {
     document.body.classList.toggle('dark-theme');
     const isDark = document.body.classList.contains('dark-theme');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    const toggleBtn = document.getElementById('theme-toggle');
-    if (toggleBtn) toggleBtn.textContent = isDark ? '☀️' : '🌙';
-    updateDashboard();
+    localStorage.setItem('theme_pref', isDark ? 'dark' : 'light');
+    document.getElementById('theme-toggle').textContent = isDark ? '☀️' : '🌙';
 }
 
-async function resetAllData() {
-    if (confirm("Deseja resetar todos os dados e restaurar o projeto inicial limpo?")) {
-        try {
-            if (typeof localforage !== 'undefined') await localforage.clear();
-            localStorage.removeItem('app_master_data');
-        } catch (e) {}
-        appData = { projects: [], activeProjectId: null };
-        createProjectObject("Repasses de Aluguel", 2000, 24, "2026-12-01");
-        renderTabs();
-        renderActiveProject();
+function resetSystem() {
+    if (confirm("Resetar todo o sistema e restaurar o projeto limpo?")) {
+        localStorage.removeItem(DB_KEY);
+        loadData();
+        renderAll();
     }
 }
 
-async function exportBackup() {
-    const data = await getStorageData();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `Backup_Financeiro_${new Date().toISOString().split('T')[0]}.json`);
-    dlAnchorElem.click();
+function exportJSON() {
+    const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+    const a = document.createElement('a');
+    a.href = str;
+    a.download = `Backup_Financeiro_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
 }
 
-function importBackup(event) {
-    const file = event.target.files[0];
-    if(!file) return;
+function importJSON(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = async function(e) {
+    reader.onload = function(e) {
         try {
-            const importedData = JSON.parse(e.target.result);
-            if(importedData && importedData.projects) {
-                appData = importedData;
-                await saveToDB();
-                renderTabs();
-                renderActiveProject();
-                alert("Backup importado com sucesso!");
+            const parsed = JSON.parse(e.target.result);
+            if (parsed && Array.isArray(parsed.projects)) {
+                db = parsed;
+                saveData();
+                renderAll();
+                alert("Backup importado!");
             }
-        } catch (err) { alert("Arquivo inválido."); }
+        } catch (err) {
+            alert("Arquivo JSON inválido.");
+        }
     };
     reader.readAsText(file);
 }
 
 function exportCSV() {
-    const proj = appData.projects.find(p => p.id === appData.activeProjectId);
+    const proj = getActiveProj();
     if (!proj) return;
     let csv = "Mes,Vencimento,Valor(R$),Status,Data_Pagamento,Notas\n";
-    
-    for (let i = 0; i < proj.months; i++) {
-        const r = proj.rows[i];
-        csv += `${r.mes},${r.vencimento},${r.valor},${r.checked ? 'Pago' : 'Pendente'},${r.dataPagamento},"${r.nota}"\n`;
-    }
-    
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", "data:text/csv;charset=utf-8," + encodeURIComponent(csv));
-    dlAnchorElem.setAttribute("download", `${proj.name.replace(/\s/g, '_')}_Relatorio.csv`);
-    dlAnchorElem.click();
+    proj.rows.forEach(r => {
+        csv += `${r.mes},${r.venc},${r.valor},${r.checked ? 'Pago' : 'Pendente'},${r.dataPag || ''},"${r.nota || ''}"\n`;
+    });
+    const a = document.createElement('a');
+    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+    a.download = `${proj.name.replace(/\s+/g, '_')}_Relatorio.csv`;
+    a.click();
 }
 
-window.onload = initApp;
+function renderAll() {
+    renderTabs();
+    renderItems();
+}
+
+window.onload = function() {
+    if (localStorage.getItem('theme_pref') === 'dark') {
+        document.body.classList.add('dark-theme');
+        document.getElementById('theme-toggle').textContent = '☀️';
+    }
+    loadData();
+    renderAll();
+};
