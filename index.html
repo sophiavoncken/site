@@ -1,115 +1,459 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gerenciador Financeiro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Executivo de Gestão & Planejamento Financeiro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-    <div class="top-nav">
-        <div class="project-tabs" id="project-tabs"></div>
-        <div class="nav-actions">
-            <button class="btn-main" onclick="openNewProjectModal()">➕ Novo</button>
-            <button id="theme-toggle" class="btn-icon" onclick="toggleTheme()">🌙</button>
+    <!-- NAVEGAÇÃO SUPERIOR -->
+    <header class="top-nav">
+        <div class="nav-left">
+            <button class="btn-nav-home" onclick="switchView('menu')" title="Ir para Menu Principal">
+                <span class="nav-icon">🏠</span> <span>Menu Principal</span>
+            </button>
         </div>
-    </div>
+        <div class="nav-right">
+            <button id="theme-toggle" class="btn-theme-emoji" onclick="toggleTheme()" title="Alternar Tema (Claro / Escuro)">
+                <span id="theme-toggle-icon">🌙</span>
+            </button>
+        </div>
+    </header>
 
-    <header>
-        <div class="header-top">
-            <h1 id="project-title">Carregando...</h1>
-            <div class="backup-actions">
-                <button class="btn-sm" onclick="exportCSV()">📊 CSV</button>
-                <button class="btn-sm" onclick="exportJSON()">💾 Backup</button>
-                <label class="btn-sm">
-                    📂 Importar
-                    <input type="file" style="display:none" onchange="importJSON(event)" accept=".json">
-                </label>
-                <button class="btn-sm btn-danger" onclick="resetSystem()">🔄 Reset</button>
+    <!-- TOAST DE NOTIFICAÇÃO -->
+    <div id="toast-notification" class="toast"></div>
+
+    <!-- TELA 1: MENU PRINCIPAL -->
+    <section id="view-menu" class="view-section active">
+        <header class="menu-header">
+            <span class="badge-tag">Painel de Controle</span>
+            <h1>Planejamento Financeiro Executivo</h1>
+            <p>Selecione uma das opções abaixo para gerenciar seu fluxo de caixa, investimentos e metas patrimoniais:</p>
+        </header>
+
+        <div class="menu-grid">
+            <div class="menu-card" onclick="switchView('repasses')">
+                <div class="menu-card-content">
+                    <div class="menu-card-icon">📋</div>
+                    <h2>Controle de Repasses</h2>
+                    <p>Checklist dos 24 repasses mensais de R$ 2.000,00, gestão de comprovantes e controle de pendências.</p>
+                </div>
+                <div class="btn-card-wrapper"><span class="btn-card">Acessar Módulo →</span></div>
+            </div>
+
+            <div class="menu-card" onclick="switchView('rendafixa')">
+                <div class="menu-card-content">
+                    <div class="menu-card-icon">📈</div>
+                    <h2>Calculadora Renda Fixa</h2>
+                    <p>Simulador avançado de CDB vs LCI, busca automática da taxa CDI no Banco Central e IR por aporte.</p>
+                </div>
+                <div class="btn-card-wrapper"><span class="btn-card">Simular Investimento →</span></div>
+            </div>
+
+            <div class="menu-card" onclick="switchView('fechamento')">
+                <div class="menu-card-content">
+                    <div class="menu-card-icon">⚖️</div>
+                    <h2>Fechamento & Importador</h2>
+                    <p>Importador inteligente de notas em texto, conciliação de saldos em conta e comparativo de metas.</p>
+                </div>
+                <div class="btn-card-wrapper"><span class="btn-card">Registrar Fechamento →</span></div>
+            </div>
+
+            <div class="menu-card" onclick="switchView('projecao')">
+                <div class="menu-card-content">
+                    <div class="menu-card-icon">🚀</div>
+                    <h2>Projeções & Trajetória</h2>
+                    <p>Plano diretor consolidado de 25 meses com metas históricas, curva real e projeção dinâmica.</p>
+                </div>
+                <div class="btn-card-wrapper"><span class="btn-card">Ver Trajetória →</span></div>
             </div>
         </div>
+    </section>
+
+    <!-- TELA 2: CONTROLE DE REPASSES -->
+    <section id="view-repasses" class="view-section">
+        <header class="header-section">
+            <div class="header-title-group">
+                <h2>Controle de Repasses (24 Meses)</h2>
+                <p class="subtitle">Dezembro/2026 a Novembro/2028 — Fluxo mensal fixo de R$ 2.000,00</p>
+            </div>
+            <div class="backup-actions">
+                <button class="btn-action-sec" onclick="exportRepassesCSV()">📊 Exportar CSV</button>
+                <button class="btn-action-sec" onclick="exportBackupJSON()">💾 Exportar Backup</button>
+                <label class="btn-action-sec btn-label-upload">
+                    📂 Importar Backup
+                    <input type="file" style="display:none" onchange="importBackupJSON(event)" accept=".json">
+                </label>
+            </div>
+        </header>
 
         <div class="metrics-grid">
             <div class="metric-card">
                 <span class="metric-title">Progresso</span>
-                <span id="metric-months" class="metric-value">0 / 0</span>
-                <span id="metric-percent" class="metric-sub">0% concluído</span>
+                <span id="rep-metric-months" class="metric-value">0 / 24</span>
+                <span id="rep-metric-percent" class="metric-sub">0% concluído</span>
             </div>
             <div class="metric-card highlight-green">
-                <span class="metric-title">Pago</span>
-                <span id="metric-paid" class="metric-value">R$ 0,00</span>
-                <span id="metric-total" class="metric-sub">de R$ 0,00</span>
+                <span class="metric-title">Total Repassado</span>
+                <span id="rep-metric-paid" class="metric-value">R$ 0,00</span>
+                <span id="rep-metric-total" class="metric-sub">de R$ 48.000,00</span>
             </div>
             <div class="metric-card highlight-orange">
-                <span class="metric-title">Restante</span>
-                <span id="metric-remaining" class="metric-value">R$ 0,00</span>
+                <span class="metric-title">Saldo Restante</span>
+                <span id="rep-metric-remaining" class="metric-value">R$ 48.000,00</span>
                 <span class="metric-sub">a repassar</span>
             </div>
         </div>
 
         <div class="progress-bar-container">
-            <div id="progress-bar" class="progress-bar"></div>
+            <div id="rep-progress-bar" class="progress-bar" style="width: 0%;"></div>
         </div>
 
         <div class="filters-container">
-            <button class="filter-btn active" id="filter-all" onclick="setFilter('all')">Todos</button>
-            <button class="filter-btn" id="filter-pending" onclick="setFilter('pending')">Pendentes</button>
-            <button class="filter-btn" id="filter-paid" onclick="setFilter('paid')">Pagos</button>
+            <button class="filter-btn active" id="filter-rep-all" onclick="setRepFilter('all')">Todos os Meses</button>
+            <button class="filter-btn" id="filter-rep-pending" onclick="setRepFilter('pending')">Pendentes</button>
+            <button class="filter-btn" id="filter-rep-paid" onclick="setRepFilter('paid')">Concluídos</button>
         </div>
-    </header>
 
-    <div id="items-container" class="items-wrapper"></div>
+        <div id="repasses-container" class="items-wrapper"></div>
+    </section>
+
+    <!-- TELA 3: CALCULADORA DE RENDA FIXA -->
+    <section id="view-rendafixa" class="view-section">
+        <header class="header-section">
+            <div class="header-title-group">
+                <h2>Calculadora de Renda Fixa</h2>
+                <p class="subtitle">Simule rendimento de CDB, LC, LCI e LCA com alíquotas de IR por aporte.</p>
+            </div>
+        </header>
+
+        <div class="calc-layout">
+            <div class="calc-form-card calc-pro">
+                <input type="hidden" id="calc-asset-type" value="CDB">
+                <div class="segmented" role="radiogroup" aria-label="Tipo de título">
+                    <button type="button" class="seg-btn active" data-asset="CDB" role="radio" aria-checked="true" onclick="setAssetType('CDB')">
+                        <span class="seg-title">CDB / LC</span>
+                        <span class="seg-sub">Tabela regressiva de IR</span>
+                    </button>
+                    <button type="button" class="seg-btn" data-asset="LCI" role="radio" aria-checked="false" onclick="setAssetType('LCI')">
+                        <span class="seg-title">LCI / LCA</span>
+                        <span class="seg-sub">Isenção total de IR</span>
+                    </button>
+                </div>
+
+                <div class="calc-fields">
+                    <div class="input-group">
+                        <label for="rf-initial">Aplicação Inicial</label>
+                        <div class="num-stepper">
+                            <span class="num-adorn prefix">R$</span>
+                            <input type="number" id="rf-initial" value="10000" step="500" oninput="runRendaFixaCalc()">
+                            <div class="step-group">
+                                <button type="button" class="step-btn" onclick="stepInput('rf-initial', -500)">−</button>
+                                <button type="button" class="step-btn" onclick="stepInput('rf-initial', 500)">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="rf-monthly">Aporte Mensal Recorrente</label>
+                        <div class="num-stepper">
+                            <span class="num-adorn prefix">R$</span>
+                            <input type="number" id="rf-monthly" value="1000" step="100" oninput="runRendaFixaCalc()">
+                            <div class="step-group">
+                                <button type="button" class="step-btn" onclick="stepInput('rf-monthly', -100)">−</button>
+                                <button type="button" class="step-btn" onclick="stepInput('rf-monthly', 100)">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="rf-months">Prazo Total (Meses)</label>
+                        <div class="num-stepper">
+                            <input type="number" id="rf-months" value="24" min="1" max="120" oninput="runRendaFixaCalc()" onchange="clampRfMonths()">
+                            <span class="num-adorn suffix">meses</span>
+                            <div class="step-group">
+                                <button type="button" class="step-btn" onclick="stepInput('rf-months', -1)">−</button>
+                                <button type="button" class="step-btn" onclick="stepInput('rf-months', 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="rf-cdi-percent">Rentabilidade do Título</label>
+                        <div class="num-stepper">
+                            <input type="number" id="rf-cdi-percent" value="120" step="5" oninput="runRendaFixaCalc()">
+                            <span class="num-adorn suffix">% do CDI</span>
+                            <div class="step-group">
+                                <button type="button" class="step-btn" onclick="stepInput('rf-cdi-percent', -5)">−</button>
+                                <button type="button" class="step-btn" onclick="stepInput('rf-cdi-percent', 5)">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group span-2">
+                        <div class="label-row">
+                            <label for="rf-cdi-rate">Taxa CDI Anual</label>
+                            <button type="button" id="btn-refresh-cdi" class="link-btn" onclick="fetchCDIRate(true)">
+                                🔄 Sincronizar BCB
+                            </button>
+                        </div>
+                        <div class="num-stepper">
+                            <input type="number" id="rf-cdi-rate" value="13.65" step="0.10" oninput="runRendaFixaCalc()">
+                            <span class="num-adorn suffix">% a.a.</span>
+                            <div class="step-group">
+                                <button type="button" class="step-btn" onclick="stepInput('rf-cdi-rate', -0.1)">−</button>
+                                <button type="button" class="step-btn" onclick="stepInput('rf-cdi-rate', 0.1)">+</button>
+                            </div>
+                        </div>
+                        <span id="cdi-status" class="field-hint">Clique em sincronizar para buscar a taxa oficial do Banco Central.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAIXA DE RESUMO EXPANDIDA E AMPLIADA HORIZONTALMENTE -->
+            <aside class="calc-result calc-result-ultra" aria-live="polite">
+                <h3 class="result-title">Resumo do Investimento</h3>
+                <dl class="result-rows">
+                    <div class="result-row">
+                        <dt>Total Aportado</dt>
+                        <dd id="rf-res-invested">R$ 0,00</dd>
+                    </div>
+                    <div class="result-row gain">
+                        <dt><span class="op">+</span> Rendimento Bruto</dt>
+                        <dd id="rf-res-gross-interest">R$ 0,00</dd>
+                    </div>
+                    <div class="result-row loss">
+                        <dt><span class="op">−</span> Imposto de Renda<small id="rf-res-ir-pct">Alíquota estimada</small></dt>
+                        <dd id="rf-res-ir-val">R$ 0,00</dd>
+                    </div>
+                </dl>
+                <div class="result-total">
+                    <span>Valor Líquido Final</span>
+                    <strong id="rf-res-total">R$ 0,00</strong>
+                </div>
+                <p class="result-foot">Ganho líquido real: <strong id="rf-res-net-gain">R$ 0,00</strong></p>
+            </aside>
+        </div>
+    </section>
+
+    <!-- TELA 4: FECHAMENTO MENSAL & IMPORTADOR (LAYOUT EMPILHADO VERTICAL E COMPACTO NO-SCROLL) -->
+    <section id="view-fechamento" class="view-section">
+        <header class="header-section" style="margin-bottom: 10px;">
+            <div class="header-title-group">
+                <h2>Fechamento Mensal & Conciliação</h2>
+                <p class="subtitle">Importe notas e registre os saldos inicial e final com salvamento individual</p>
+            </div>
+            <button class="btn-action-sec btn-whatsapp" onclick="copyWhatsAppSummary()">💬 Copiar p/ WhatsApp</button>
+        </header>
+
+        <div class="calc-form-card fechamento-compact-card">
+            <!-- SELEÇÃO DE MÊS ESTILIZADA -->
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label for="fechamento-month-select" class="form-section-title">SELECIONAR MÊS DE REFERÊNCIA:</label>
+                <select id="fechamento-month-select" class="input-select" onchange="loadFechamentoMonth()"></select>
+            </div>
+
+            <!-- SALDOS INICIAL E FINAL PRÉ-COLOCADOS E EDITÁVEIS -->
+            <div class="saldos-inline-row" style="margin-bottom: 10px;">
+                <div class="input-group flex-1">
+                    <label for="fech-saldo-inicial">Saldo Inicial do Mês</label>
+                    <div class="num-stepper-save">
+                        <span class="num-adorn prefix">R$</span>
+                        <input type="number" id="fech-saldo-inicial" placeholder="0.00" step="0.01">
+                        <button type="button" class="btn-save-inline" onclick="saveSaldoInicial()">💾 Salvar</button>
+                    </div>
+                </div>
+
+                <div class="input-group flex-1">
+                    <label for="fech-saldo-final">Saldo Final Real em Conta</label>
+                    <div class="num-stepper-save">
+                        <span class="num-adorn prefix">R$</span>
+                        <input type="number" id="fech-saldo-final" placeholder="0.00" step="0.01" oninput="recalcFechamento()">
+                        <button type="button" class="btn-save-inline" onclick="saveSaldoFinal()">💾 Salvar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- IMPORTADOR INTELIGENTE (ESTRUTURA EMPILHADA FULL-WIDTH E MINIMIZADA) -->
+            <div class="importer-card-collapsible" style="margin-top: 10px;">
+                <div class="importer-header-bar" onclick="toggleImporterAccordion()">
+                    <div class="importer-title-group">
+                        <span class="importer-icon">⚡</span>
+                        <h4>Importador Inteligente de Notas</h4>
+                    </div>
+                    <div class="accordion-actions">
+                        <button type="button" class="btn-mini btn-exemplo" onclick="event.stopPropagation(); fillNotesExample()">📋 Exemplo</button>
+                        <button type="button" id="importer-toggle-btn" class="btn-toggle-accordion">▼ Expandir Importador</button>
+                    </div>
+                </div>
+                
+                <div id="importer-content-body" class="accordion-body-content" style="display:none;">
+                    <textarea id="notes-paste-input" class="modal-textarea" rows="2" placeholder="Ex: - [ ] Aluguel 700 5&#10;- [x] Nubank 547,16 20"></textarea>
+                    <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+                        <button class="btn-save" onclick="processNotesImport()">⚡ Processar & Importar Contas</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LANÇAMENTOS DO MÊS (ESTRUTURA EMPILHADA FULL-WIDTH E MINIMIZADA) -->
+            <div class="bills-section-card" style="margin-top: 10px;">
+                <div class="bills-header-toggle" onclick="toggleBillsAccordion()">
+                    <div class="importer-title-group">
+                        <span class="importer-icon">📂</span>
+                        <h4>Lançamentos do Mês (<span id="bills-count-badge">0</span>)</h4>
+                    </div>
+                    <button type="button" id="bills-toggle-btn" class="btn-toggle-accordion">▼ Expandir Contas</button>
+                </div>
+
+                <div id="bills-content-body" class="accordion-body-content" style="display:none;">
+                    <div class="bill-input-row" style="margin-top: 8px;">
+                        <input type="text" id="bill-desc" placeholder="Nome da conta (ex: Aluguel)" class="input-text" style="flex:2;">
+                        <input type="number" id="bill-val" placeholder="R$ Valor" class="input-date" style="flex:1; min-width:90px;" step="0.01">
+                        <input type="number" id="bill-day" placeholder="Dia" class="input-date" style="width:70px;" min="1" max="31">
+                        <button class="btn-save" onclick="addBillManual()">➕ Adicionar</button>
+                    </div>
+
+                    <div id="bills-list-container" class="bills-list" style="max-height: 150px;"></div>
+
+                    <div class="bills-summary-cards" style="margin-top: 8px;">
+                        <div class="bill-sum-card">
+                            <span>Total Pago</span>
+                            <strong id="bills-total-paid" class="text-success">R$ 0,00</strong>
+                        </div>
+                        <div class="bill-sum-card">
+                            <span>Total Pendente</span>
+                            <strong id="bills-total-pending" class="text-danger">R$ 0,00</strong>
+                        </div>
+                        <div class="bill-sum-card main">
+                            <span>Total Lançado</span>
+                            <strong id="bills-total-val">R$ 0,00</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STATUS DE DESEMPENHO EM CARD ISOLADO -->
+            <div class="calc-results-summary-card" style="margin-top: 10px; padding: 12px 18px;">
+                <div class="calc-res-item">
+                    <span>Meta Prevista no Plano Diretor:</span>
+                    <strong id="fech-meta-proj">R$ 0,00</strong>
+                </div>
+                <div class="calc-res-item">
+                    <span>Status de Desempenho:</span>
+                    <strong id="fech-status-badge" class="badge-status">Aguardando Saldo Real</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELA 5: PROJEÇÕES & TRAJETÓRIA PATRIMONIAL (HEADER COM EXATAMENTE 3 BOTÕES) -->
+    <section id="view-projecao" class="view-section">
+        <header class="header-section">
+            <div class="header-title-group">
+                <h2>Projeções & Trajetória Patrimonial</h2>
+                <p class="subtitle">Plano Diretor Consolidado — Novembro/2026 a Novembro/2028 (Ciclo de 25 Meses)</p>
+            </div>
+            <!-- EXACTLY 3 BUTTONS AS REQUESTED -->
+            <div class="backup-actions">
+                <button class="btn-action-sec" onclick="openMetaPdf()">📄 Relatório em PDF</button>
+                <button class="btn-action-sec" onclick="openChartModal()">📊 Visualizar Gráficos</button>
+                <button class="btn-action-sec btn-danger-action" onclick="resetProjecaoRealValues()" title="Resetar Fechamentos Digitados">🔄 Reset Fechamentos</button>
+            </div>
+        </header>
+
+        <div class="proj-config-bar">
+            <label for="proj-rate-input">Taxa de Rendimento Recalculada:</label>
+            <div class="input-rate-wrapper">
+                <div class="num-stepper" style="width:130px; height:36px;">
+                    <input type="number" id="proj-rate-input" value="0.90" step="0.05" onchange="updateProjecaoRate(this.value)">
+                    <span class="num-adorn suffix">% a.m.</span>
+                </div>
+            </div>
+            <button class="btn-mini" onclick="resetProjecaoRate()" title="Restaurar taxa padrão (0,90% a.m.)">↺ Padrão (0,90%)</button>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-title">Patrimônio Inicial</span>
+                <span class="metric-value">R$ 17.670,00</span>
+                <span class="metric-sub">Base Novembro / 2026</span>
+            </div>
+            <div class="metric-card highlight-green">
+                <span class="metric-title">Ponto Crítico / Saldo Mínimo</span>
+                <span id="proj-metric-min" class="metric-value">R$ 10.715,40</span>
+                <span class="metric-sub">Fevereiro / 2027</span>
+            </div>
+            <div class="metric-card highlight-orange">
+                <span class="metric-title">Meta Final (Novembro/2028)</span>
+                <span id="proj-metric-final" class="metric-value">R$ 70.314,97</span>
+                <span class="metric-sub">Patrimônio Mês 25</span>
+            </div>
+        </div>
+
+        <div class="info-banner">
+            💡 <strong>Dynamic Forecasting:</strong> As metas do plano diretor permanecem como referência histórica. Ao preencher o <u>Saldo Final Real</u> em conta na aba Fechamento, a trajetória é atualizada. Clique em <strong>"📊 Visualizar Gráficos"</strong> no topo para alternar entre as visualizações de Linha e Pizza.
+        </div>
+
+        <div id="projecao-items-container" class="items-wrapper"></div>
+    </section>
 </div>
 
-<div id="modal-new-project" class="modal-overlay">
-    <div class="modal-box">
-        <h2>Criar Novo Controle</h2>
-        <div class="input-group">
-            <label>Nome do Projeto</label>
-            <input type="text" id="new-proj-name" placeholder="Ex: Aluguel, Carro...">
-        </div>
-        <div class="input-group">
-            <label>Valor da Parcela (R$)</label>
-            <input type="number" id="new-proj-value" placeholder="2000" step="0.01">
-        </div>
-        <div class="input-group">
-            <label>Quantidade de Parcelas</label>
-            <input type="number" id="new-proj-months" placeholder="24">
-        </div>
-        <div class="input-group">
-            <label>Data da 1ª Parcela</label>
-            <input type="date" id="new-proj-date">
-        </div>
-        <div class="modal-actions">
-            <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
-            <button class="btn-save" onclick="createNewProject()">Salvar</button>
-        </div>
-    </div>
-</div>
-
+<!-- MODAL ANOTAÇÕES -->
 <div id="modal-note" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 id="note-modal-title">Anotação</h3>
+            <h3 id="note-modal-title">Anotação Executiva</h3>
             <button class="btn-close" onclick="closeModals()">✖</button>
         </div>
-        <textarea id="note-text-input" class="modal-textarea" rows="4" placeholder="Escreva detalhes sobre o pagamento..."></textarea>
+        <textarea id="note-text-input" class="modal-textarea" rows="4" placeholder="Adicione observações sobre esta parcela ou transferência..."></textarea>
         <div class="modal-actions">
             <button class="btn-cancel" onclick="closeModals()">Cancelar</button>
-            <button class="btn-save" onclick="saveNote()">Salvar Nota</button>
+            <button class="btn-save" onclick="saveNoteFromModal()">Salvar Anotação</button>
         </div>
     </div>
 </div>
 
+<!-- MODAL VISUALIZADOR DE ARQUIVO (PDF & METAS) COM BOTÃO DE IMPRIMIR/BAIXAR DENTRO -->
 <div id="modal-viewer" class="modal-overlay">
     <div class="modal-box modal-large">
         <div class="modal-header">
-            <h3>Comprovante Anexado</h3>
+            <h3 id="viewer-title">Relatório Executivo PDF</h3>
             <button class="btn-close" onclick="closeModals()">✖</button>
         </div>
         <div id="viewer-content" class="viewer-content"></div>
+        <div id="viewer-footer" class="viewer-footer">
+            <button class="btn-action-sec btn-whatsapp" onclick="downloadMetaPdf()">⬇️ Imprimir / Baixar PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE GRÁFICOS (LINHA VS PIZZA) -->
+<div id="modal-chart" class="modal-overlay">
+    <div class="modal-box modal-large">
+        <div class="modal-header">
+            <h3>Visualização de Gráficos & Trajetória</h3>
+            <button class="btn-close" onclick="closeModals()">✖</button>
+        </div>
+        <div class="chart-modal-toolbar">
+            <div class="segmented" style="max-width: 380px;">
+                <button type="button" id="btn-chart-type-line" class="seg-btn active" onclick="switchChartType('line')">
+                    <span class="seg-title">📈 Gráfico de Linha</span>
+                    <span class="seg-sub">Evolução Meta vs Real</span>
+                </button>
+                <button type="button" id="btn-chart-type-pie" class="seg-btn" onclick="switchChartType('pie')">
+                    <span class="seg-title">🍕 Gráfico de Pizza</span>
+                    <span class="seg-sub">Composição Patrimonial</span>
+                </button>
+            </div>
+        </div>
+        <div id="chart-modal-canvas" class="chart-container-modal"></div>
     </div>
 </div>
 
